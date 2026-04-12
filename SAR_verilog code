@@ -1,0 +1,100 @@
+`timescale 1ns / 1ps
+
+// ==============================================================================
+// THE ADC MODULE
+// ==============================================================================
+module SAR_register (
+    input  wire clk,
+    input  wire reset,
+    input  wire sample_trigger,
+    input  wire [15:0] analog_input,
+    
+    // Final outputs
+    output reg  [7:0] digital_output,
+    output reg  conversion_done,
+    
+    // Probes for the Simulator (So you can see every block easily!)
+    output wire [15:0] probe_held_val,
+    output wire [15:0] probe_dac_val,
+    output wire        probe_comp_val,
+    output wire [7:0]  probe_seq_reg,
+    output wire [7:0]  probe_data_reg
+);
+
+    // Internal state tracking
+    reg busy;
+
+    // ==========================================
+    // BLOCK 1: Sample and Hold (S&H)
+    // ==========================================
+    reg [15:0] held_voltage;
+    always @(posedge clk) begin
+        if (sample_trigger) begin
+            held_voltage <= analog_input;
+        end
+    end
+    assign probe_held_val = held_voltage;
+
+    // ==========================================
+    // BLOCK 2: The Two Rows of Flip-Flops
+    // ==========================================
+    reg [7:0] seq_reg;  // ROW 1: The Sequencer (Ring Counter)
+    reg [7:0] data_reg; // ROW 2: The Data Register (The Guesser)
+    
+    assign probe_seq_reg  = seq_reg;
+    assign probe_data_reg = data_reg;
+
+    // ==========================================
+    // BLOCK 3: Digital-to-Analog Converter (DAC)
+    // ==========================================
+    wire [15:0] dac_voltage;
+    assign dac_voltage = {8'b0, data_reg}; // Pad 8 bits to 16 bits for comparison
+    assign probe_dac_val = dac_voltage;
+
+    // ==========================================
+    // BLOCK 4: Comparator
+    // ==========================================
+    wire comp_out;
+    assign comp_out = (held_voltage >= dac_voltage) ? 1'b1 : 1'b0;
+    assign probe_comp_val = comp_out;
+
+    // ==========================================
+    // BLOCK 5: The SAR Control Logic
+    // ==========================================
+    always @(posedge clk) begin
+        if (reset) begin
+            seq_reg         <= 8'b0;
+            data_reg        <= 8'b0;
+            digital_output  <= 8'b0;
+            busy            <= 1'b0;
+            conversion_done <= 1'b0;
+        end 
+        else if (sample_trigger) begin
+            // Step 1: Initial Assumption. Load '1' into MSB of both rows.
+            seq_reg         <= 8'b1000_0000;
+            data_reg        <= 8'b1000_0000;
+            busy            <= 1'b1;
+            conversion_done <= 1'b0;
+        end 
+        else if (busy) begin
+            if (seq_reg != 8'b0) begin
+                // A: Shift the Sequencer right by 1
+                seq_reg <= seq_reg >> 1; 
+
+                // B: Update Data Register based on the Comparator
+                if (comp_out == 1'b1) begin
+                    // Guess was <= Input (GOOD). Keep current bit 1, set next bit 1.
+                    data_reg <= data_reg | (seq_reg >> 1);
+                end else begin
+                    // Guess was > Input (BAD). Clear current bit to 0, set next bit 1.
+                    data_reg <= (data_reg & ~seq_reg) | (seq_reg >> 1);
+                end
+            end else begin
+                // The '1' shifted completely out of the sequencer. We are done!
+                busy            <= 1'b0;
+                conversion_done <= 1'b1;
+                digital_output  <= data_reg;
+            end
+        end
+    end
+endmodule
