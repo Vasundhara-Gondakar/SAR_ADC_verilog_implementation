@@ -1,0 +1,53 @@
+// ==============================================================================
+// THE TESTBENCH
+// ==============================================================================
+module SAR_test();
+
+    reg clk;
+    reg reset;
+    reg sample_trigger;
+    reg [15:0] analog_input;
+    
+    wire [7:0]  digital_output;
+    wire        conversion_done;
+    
+    // Probes
+    wire [15:0] probe_held_val;
+    wire [15:0] probe_dac_val;
+    wire        probe_comp_val;
+    wire [7:0]  probe_seq_reg;
+    wire [7:0]  probe_data_reg;
+
+    // Instantiate the ADC
+    SAR_register UUT (
+        .clk(clk), .reset(reset), .sample_trigger(sample_trigger), .analog_input(analog_input),
+        .digital_output(digital_output), .conversion_done(conversion_done),
+        .probe_held_val(probe_held_val), .probe_dac_val(probe_dac_val), 
+        .probe_comp_val(probe_comp_val), .probe_seq_reg(probe_seq_reg), .probe_data_reg(probe_data_reg)
+    );
+
+    // 100 MHz Clock
+    always #5 clk = ~clk;
+
+    initial begin
+        // Initialize
+        clk = 0; reset = 1; sample_trigger = 0; analog_input = 0;
+        #15 reset = 0;
+        
+        // --- TEST 1: Analog Value = 200 ---
+        analog_input = 16'd200;
+        #10 sample_trigger = 1; // Pulse S&H
+        #10 sample_trigger = 0;
+        wait(conversion_done);  // Wait for SAR logic to finish
+        #20;
+        
+        // --- TEST 2: Analog Value = 85 ---
+        analog_input = 16'd85;
+        #10 sample_trigger = 1; // Pulse S&H again
+        #10 sample_trigger = 0;
+        wait(conversion_done);
+        #30;
+
+        $stop;
+    end
+endmodule
