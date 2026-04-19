@@ -25,7 +25,6 @@ The Data Register is the part of the circuit that makes and corrects the digital
   
    **1: Making the guess (setting the bit)**
       It sets a bit to 1 based on where the Sequencer points. This is its 'guess' for that bit position.
-  
    **2: Checking the Result (Comparator Feedback)**
       On the next clock cycle, it checks the Comparator to see if its guess was too high. 
       If the guess was too high: The Comparator says "low" (Input voltage is less than the guessed Voltage), so the Data Register clears that bit back to 0. 
