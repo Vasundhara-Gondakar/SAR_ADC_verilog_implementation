@@ -15,18 +15,23 @@ Captures and freezes the input voltage so it doesn't change mid conversion.
 
 **2. SAR control logic and two row register architecture**:
 It consists of two main parts:
+
 **Row 1: The Sequencer (Ring Counter)**
 The first register, referred to as the sequencer, functions as a moving pointer that determines which bit is currently being evaluated. It is initialized with its most significant bit set and shifts right with each clock cycle, effectively stepping through each bit position from MSB to LSB. 
 For example : Considering, 8 bit register is considered where a single `1` shifts from left to right on every clock cycle. It tells the next row the exact bit that is being currently guessed. 
+
 **Row 2: The Data Register (The Guesser)**
 The Data Register is the part of the circuit that makes and corrects the digital guesses for the SAR ADC. 
+  
    **1: Making the guess (setting the bit)**
       It sets a bit to 1 based on where the Sequencer points. This is its 'guess' for that bit position.
-   2: Checking the Result (Comparator Feedback)
+  
+   **2: Checking the Result (Comparator Feedback)**
       On the next clock cycle, it checks the Comparator to see if its guess was too high. 
       If the guess was too high: The Comparator says "low" (Input voltage is less than the guessed Voltage), so the Data Register clears that bit back to 0. 
       If the guess was less than or equal to the target: the Comparator says "high"(Input voltage is greater than the guessed Voltage), so the Data Register keeps that bit as 1. 
       In the same clock cycle, it sets the next bit to 1, repeating the process. It doesn't wait.
+
 The logic can be visualized as given in the table below:
 | Step (Assumption) | $B_3$ (MSB) | $B_2$ | $B_1$ | $B_0$ (LSB) | Comparator Decision |
 | :---: | :---: | :---: | :---: | :---: | :---: |
