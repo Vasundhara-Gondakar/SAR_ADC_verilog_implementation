@@ -1,4 +1,5 @@
 # SAR_ADC_verilog_implementation
+The main focus is to understand the two row SAR logic.
 
 ###  The Concept: "Guess My Number"
 A SAR ADC uses a **Binary Search** algorithm to find an unknown analog voltage. It's exactly like playing "Guess My Number" between 0 and 255:
@@ -6,7 +7,7 @@ A SAR ADC uses a **Binary Search** algorithm to find an unknown analog voltage. 
 2. If the comparator says the real voltage is "Higher", you guess the middle of the upper half: **192**.
 3. If it says "Lower", you guess the middle of the lower half: **64**.
 
-This hardware takes exactly 8 clock cycles as it consists of only 1 comparator to play this game and find the 8-bit digital answer. Hence, no. of clock cycles required = no. of bits.
+The hardware takes exactly n clock cycles  (as it consists of only 1 comparator) to play this game and find the n-bit digital answer. Hence, no. of clock cycles required = no. of bits.
 
 ---
 
@@ -50,4 +51,15 @@ The logic can be visualized as given in the table below:
 
   ### **DAC:** 
   Converts the digital guess back to an analog scale.
-  Once the input is captured, the SAR logic begins generating trial values that are passed through the DAC. In real hardware, the DAC converts a digital code into a corresponding analog voltage that can be compared against the input signal. 
+  ### **Comparator:**
+  Compares the Voltage received from DAC and the input voltage and feeds to the control logic block.
+
+---
+
+##  NOTE: 
+The code fakes the analog world using digital math:
+
+1. **The "Analog" Target:** Instead of a real voltage, a 16-bit binary integer (for example, the number `200`) is taken as input to the ADC.
+2. **The "DAC" (The Padding Trick):** The simulated DAC just uses a Verilog concatenation trick: `assign dac_voltage = {8'b0, data_reg};`. This simply glues eight `0`s to the front of the 8 bit guess (like `128`), turning it into a 16-bit number without changing its actual decimal value.
+3. **The Comparator:** Because the target input and the padded DAC guess are now both exactly 16 bits, it just does a basic math check: `if (held_voltage >= dac_voltage)` (e.g., *Is 200 >= 128?*). 
+
